@@ -101,5 +101,5 @@ internal class SampleJob:IJob
 }
 ```
 
-If for some reason initialization of your job from the container fails it will be logged using System.Diagnostics.Debug.WriteLine per default, if you want to override this behaviour to use a custom logging framework you can register your own implementation of <b>IOnJobInitializationFailedHandler</b>
+If for some reason initialization of your job from the container fails it will be logged using System.Diagnostics.Debug.WriteLine per default, if you want to override this behaviour to use a custom logging framework you can register your own implementation of *IOnJobInitializationFailedHandler*
 
