@@ -6,7 +6,6 @@ using System.Threading;
 using Quartz;
 using Quartz.Spi;
 using StructureMap;
-using StructureMap.Attributes;
 
 namespace Topshelf.Quartz.StructureMap
 {
