@@ -6,16 +6,31 @@ using System.Threading;
 using Quartz;
 using Quartz.Spi;
 using StructureMap;
+using StructureMap.Attributes;
 
 namespace Topshelf.Quartz.StructureMap
 {
-	public class SimpleJobFactory : IJobFactory
+    public interface IOnJobInitializationFailedHandler
+    {
+        void Handle(Exception ex);
+    }
+
+    public class DefaultOnJobInitializationFailedHandler : IOnJobInitializationFailedHandler
+    {
+        public void Handle(Exception ex)
+        {
+            Debug.WriteLine("Exception on Starting job - {0}", (ex.InnerException ?? ex).Message);
+        }
+    }
+    public class SimpleJobFactory : IJobFactory
 	{
 		private readonly IContainer _container;
+        private readonly IOnJobInitializationFailedHandler _onjobinitializationfailedhandler;
 
-		public SimpleJobFactory(IContainer container) {
+        public SimpleJobFactory(IContainer container, IOnJobInitializationFailedHandler onjobinitializationfailedhandler) {
 			_container = container;
-		}
+            _onjobinitializationfailedhandler = onjobinitializationfailedhandler;
+        }
 
 		public IJob NewJob(TriggerFiredBundle bundle, IScheduler scheduler) {
 			IJob job;
@@ -25,10 +40,10 @@ namespace Topshelf.Quartz.StructureMap
 				job = _container.GetInstance(jobType) as IJob;
 			}
 			catch (Exception ex) {
-				Debug.WriteLine("Exception on Starting job - ", (ex.InnerException ?? ex).Message);
-				throw new SchedulerException(string.Format(CultureInfo.InvariantCulture,
-					"Problem instantiating class '{0}'", jobDetail.JobType.FullName), ex);
-			}
+                    _onjobinitializationfailedhandler.Handle(ex);
+                throw new SchedulerException(string.Format(CultureInfo.InvariantCulture,
+                "Problem instantiating class '{0}'", jobDetail.JobType.FullName), ex);
+            }
 			return job;
 		}
 
@@ -41,12 +56,15 @@ namespace Topshelf.Quartz.StructureMap
 	{
 		private readonly IContainer _container;
 		static readonly ConcurrentDictionary<int, IContainer> Containers = new ConcurrentDictionary<int, IContainer>();
+        private readonly IOnJobInitializationFailedHandler _onjobinitializationfailedhandler;
 
-		public NestedContainerJobFactory(IContainer container) {
-			_container = container;
-		}
+        public NestedContainerJobFactory(IContainer container, IOnJobInitializationFailedHandler onjobinitializationfailedhandler)
+        {
+            _container = container;
+            _onjobinitializationfailedhandler = onjobinitializationfailedhandler;
+        }
 
-		public IJob NewJob(TriggerFiredBundle bundle, IScheduler scheduler) {
+        public IJob NewJob(TriggerFiredBundle bundle, IScheduler scheduler) {
 			IJob job;
 			var jobDetail = bundle.JobDetail;
 			var jobType = jobDetail.JobType;
@@ -60,11 +78,10 @@ namespace Topshelf.Quartz.StructureMap
 					Containers.Count);
 			}
 			catch (Exception ex) {
-				Debug.WriteLine("Exception on Starting job - ", (ex.InnerException ?? ex).Message);
-				var cultureInfo = CultureInfo.InvariantCulture;
-				object[] fullName = { jobDetail.JobType.FullName };
-				throw new SchedulerException(string.Format(cultureInfo, "Problem instantiating class '{0}'", fullName), ex);
-			}
+                _onjobinitializationfailedhandler.Handle(ex);
+                throw new SchedulerException(string.Format(CultureInfo.InvariantCulture,
+                "Problem instantiating class '{0}'", jobDetail.JobType.FullName), ex);
+            }
 			return job;
 		}
 
